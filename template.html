@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>{{TITLE}}</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, "PingFang SC", sans-serif; margin: 0; }
+  header { position: sticky; top: 0; z-index: 9; display: flex; gap: 18px; align-items: center;
+           flex-wrap: wrap; padding: 12px 20px; background: Canvas;
+           border-bottom: 1px solid rgba(128,128,128,.35); }
+  h1 { font-size: 16px; margin: 0 12px 0 0; font-weight: 600; }
+  label { font-size: 13px; color: GrayText; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  td { padding: 5px 8px; border-bottom: 1px solid rgba(128,128,128,.18); vertical-align: top; }
+  td.n { width: 56px; text-align: right; color: GrayText; font-variant-numeric: tabular-nums; }
+  td.w { width: 150px; font-weight: 600; font-family: ui-monospace, Menlo, monospace; }
+  td.i { width: 170px; color: GrayText; font-family: "Lucida Grande", "Times New Roman", serif; }
+  td.p { width: 110px; color: GrayText; white-space: nowrap; }
+  tr { cursor: pointer; }
+  tr:hover, tr.speaking { background: Highlight; }
+  tr:hover td, tr.speaking td { color: HighlightText; }
+</style>
+</head>
+<body>
+<header>
+  <h1>{{TITLE}}</h1>
+  <label>声音 <select id="v"></select></label>
+  <label>语速 <input id="rate" type="range" min="0.6" max="1.3" step="0.05" value="0.9"> <span id="rv">0.9</span></label>
+</header>
+<table><tbody>
+<!--ROWS-->
+</tbody></table>
+<script>
+var sel = document.getElementById('v');
+var rate = document.getElementById('rate');
+var rv = document.getElementById('rv');
+var voices = [];
+
+function rank(v) {
+  if (/samantha/i.test(v.name)) return 0;
+  if (/en[-_]US/i.test(v.lang)) return 1;
+  if (/en[-_]GB/i.test(v.lang)) return 2;
+  return 3;
+}
+function fill() {
+  voices = speechSynthesis.getVoices().filter(function (v) { return /^en/i.test(v.lang); });
+  voices.sort(function (a, b) { return rank(a) - rank(b) || a.name.localeCompare(b.name); });
+  sel.innerHTML = voices.map(function (v, i) {
+    return '<option value="' + i + '">' + v.name + ' (' + v.lang + ')</option>';
+  }).join('');
+}
+fill();
+speechSynthesis.onvoiceschanged = fill;
+rate.addEventListener('input', function () { rv.textContent = rate.value; });
+
+document.querySelectorAll('tbody tr').forEach(function (tr) {
+  tr.addEventListener('click', function () {
+    var word = tr.querySelector('.w').textContent;
+    speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(word);
+    var v = voices[Number(sel.value)];
+    if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = 'en-US'; }
+    u.rate = Number(rate.value);
+    document.querySelectorAll('tr.speaking').forEach(function (t) { t.classList.remove('speaking'); });
+    tr.classList.add('speaking');
+    u.onend = function () { tr.classList.remove('speaking'); };
+    speechSynthesis.speak(u);
+  });
+});
+</script>
+</body>
+</html>
