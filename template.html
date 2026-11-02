@@ -11,6 +11,7 @@
            border-bottom: 1px solid rgba(128,128,128,.35); }
   h1 { font-size: 16px; margin: 0 12px 0 0; font-weight: 600; }
   label { font-size: 13px; color: GrayText; }
+  .tip { font-size: 12px; color: GrayText; }
   table { border-collapse: collapse; width: 100%; font-size: 14px; }
   td { padding: 5px 8px; border-bottom: 1px solid rgba(128,128,128,.18); vertical-align: top; }
   td.n { width: 56px; text-align: right; color: GrayText; font-variant-numeric: tabular-nums; }
@@ -25,6 +26,7 @@
 <body>
 <header>
   <h1>{{TITLE}}</h1>
+  <span class="tip">没声音？先看手机左侧静音开关和音量</span>
   <label>声音 <select id="v"></select></label>
   <label>语速 <input id="rate" type="range" min="0.6" max="1.3" step="0.05" value="0.9"> <span id="rv">0.9</span></label>
 </header>
@@ -54,18 +56,29 @@ fill();
 speechSynthesis.onvoiceschanged = fill;
 rate.addEventListener('input', function () { rv.textContent = rate.value; });
 
+function say(text, tr, plain) {
+  var u = new SpeechSynthesisUtterance(text);
+  var v = voices[Number(sel.value)];
+  if (v && !plain) { u.voice = v; u.lang = v.lang; } else { u.lang = 'en-US'; }
+  u.rate = Number(rate.value);
+  var started = false;
+  u.onstart = function () { started = true; if (tr) tr.classList.add('speaking'); };
+  u.onend = u.onerror = function () { if (tr) tr.classList.remove('speaking'); };
+  try { speechSynthesis.resume(); } catch (e) {}
+  speechSynthesis.speak(u);
+  // 某些机器上指定的语音不可用时会一声不响，一秒后改用系统默认重来一次
+  if (v && !plain) {
+    setTimeout(function () { if (!started) { speechSynthesis.cancel(); say(text, tr, true); } }, 1200);
+  }
+}
+
 document.querySelectorAll('tbody tr').forEach(function (tr) {
   tr.addEventListener('click', function () {
     var word = tr.querySelector('.w').textContent;
-    speechSynthesis.cancel();
-    var u = new SpeechSynthesisUtterance(word);
-    var v = voices[Number(sel.value)];
-    if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = 'en-US'; }
-    u.rate = Number(rate.value);
     document.querySelectorAll('tr.speaking').forEach(function (t) { t.classList.remove('speaking'); });
-    tr.classList.add('speaking');
-    u.onend = function () { tr.classList.remove('speaking'); };
-    speechSynthesis.speak(u);
+    speechSynthesis.cancel();
+    // iOS Safari 在同一轮里 cancel 完立刻 speak 会静默失败，隔一小段时间再播
+    setTimeout(function () { say(word, tr); }, 80);
   });
 });
 </script>
