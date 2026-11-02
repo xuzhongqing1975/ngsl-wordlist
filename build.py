@@ -172,6 +172,7 @@ def main():
     write_csv(data, base + '.csv')
     write_md(data, base + '.md')
     write_html(data, os.path.join(OUT, 'NGSL点读.html'))
+    write_html(data, os.path.join(ROOT, 'index.html'))   # GitHub Pages 的入口页
 
     missing = [r[1] for r in data if not r[2]]
     print('完成：%d 词，缺音标 %d 个' % (len(data), len(missing)))
